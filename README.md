@@ -33,11 +33,11 @@ mode is replaced with 0, 1, or 2, as described above under the optional arguemen
 
 In the end you could be running any of these example commands:
 
-`python scraper.py https://ifunny.co/user/TheLegoManSeries?s=cl`
+* `python scraper.py https://ifunny.co/user/TheLegoManSeries?s=cl`
 
-`python scraper.py https://ifunny.co/user/TheLegoManSeries?s=cl 2`
+* `python scraper.py https://ifunny.co/user/TheLegoManSeries?s=cl 2`
 
-`python scraper.py https://ifunny.co/user/TheLegoManSeries?s=cl 2 0`
+* `python scraper.py https://ifunny.co/user/TheLegoManSeries?s=cl 2 0`
 
 Or with the txt file being used: 
 
