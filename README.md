@@ -26,9 +26,9 @@ List of Requirements:
 Navigate to the python file in cmd, then execute the line `python scraper.py link pause mode` where link is replaced with the iFunny.co user's page such as https://ifunny.co/user/TheLegoManSeries?s=cl
 
 the link can also be replaced with a txt file that has a link on each line of the file, for example:
-`https://ifunny.co/user/TheLegoManSeries?s=cl
+https://ifunny.co/user/TheLegoManSeries?s=cl
 https://ifunny.co/user/WhateverTheUserIsNamed
-https://ifunny.co/user/JustKeepAddingMoreUserProfiles`
+https://ifunny.co/user/JustKeepAddingMoreUserProfiles
 
 pause is replaced with the amount of time in seconds before the next scroll to bottom, increase this value if your program stops scrolling prematurely
 
