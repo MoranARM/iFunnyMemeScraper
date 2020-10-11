@@ -29,6 +29,7 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 import os
 from os.path import exists
+from selenium.common.exceptions import NoSuchElementException
 
 # Mode options are 0 for grab links and download files, 1 for grab links only, and 2 for download only
 site = argv[1]
@@ -65,6 +66,23 @@ def scroll_to_bottom(): # Scrolls to the bottom of the page to load in all javas
         if lastCount==lenOfPage:
             match=True
 
+def check_exists_by_class_name(class_name):
+    try:
+        driver.find_element_by_class_name(class_name)
+    except NoSuchElementException:
+        return False
+    return True
+
+def check_exists_by_class_attribute(class_name, attribute):
+    exists = None
+    try:
+        exists = driver.find_element_by_class_name(class_name).get_attribute(attribute)
+    except NoSuchElementException:
+        return False
+    except AttributeError:
+        return False
+    return exists is not None
+
 def grab_video_links(): # adds video links to the vid_links list
     link_elems = driver.find_elements_by_css_selector("a[class*='grid__link']")
     for vid_url in link_elems:
@@ -81,13 +99,17 @@ def load_images(): # appends cropped images to file_names
     for img_url in img_elems:
         if '1x1.gif' not in img_url.get_attribute("src").split("images/",1)[1]:
             file_names.append('https://imageproxy.ifunny.co/crop:x-20/images/'+(img_url.get_attribute("src")).split("images/",1)[1]) # Removes watermark
+    if check_exists_by_class_name("v-avatar__image") and check_exists_by_class_attribute("v-avatar__image","src"):
+        file_names.append("https://imageproxy.ifunny.co/crop:square/user_photos/"+driver.find_element_by_class_name("v-avatar__image").get_attribute("src").split("/")[-1])
+    if check_exists_by_class_name("profile__cover-image") and check_exists_by_class_attribute("profile__cover-image","src"):
+        file_names.append(driver.find_element_by_class_name("profile__cover-image").get_attribute("src"))
 
 def append_video_links(): # grabs actual video links from their link reference
     count = 0
     for link in vid_links:
         file_names.append(grab_attr(link, 'media_fun', 'data-source')) # Uses bs4
         count+=1
-        print('Appending video link '+count+' out of '+len(vid_links))
+        print('Appending video link '+str(count)+' out of '+str(len(vid_links)))
         # driver.get(link) # uncomment these to instead use selenium
         # time.sleep(pause)
         # file_names.append(driver.find_element_by_css_selector("div[class*='media_fun']").get_attribute("data-source"))
