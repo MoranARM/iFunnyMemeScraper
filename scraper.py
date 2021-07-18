@@ -33,28 +33,28 @@ from selenium.common.exceptions import NoSuchElementException
 
 # Mode options are 0 for grab links and download files, 1 for grab links only, and 2 for download only
 site = argv[1]
-pause = 2 if len(argv)<3 else argv[2] # increase if page does not load images fast enough
-mode = 0 if len(argv)<4 else argv[3] # sets default mode to 0
+pause = 2 if len(argv)<3 else int(argv[2]) # increase if page does not load images fast enough
+mode = 0 if len(argv)<4 else int(argv[3]) # sets default mode to 0
 URL = ""+site
 subdirectory = (URL if '?s=cl' not in URL else URL[:-5]).split('/')[-1]
 print(subdirectory)
 driver = webdriver.Firefox() # Requires selenium webdriver
 file_names = []  # a list to store the names that will be used to grab each image
-vid_links = []
 
 def set_variables(url): # Resets the gloabl variables used for each user
     global URL, subdirectory, file_names, vid_links # Allows the function to reset global variables
-    URL = ""+url
+    URL = ''+url if 'http' in url else 'https://'+url
     subdirectory = (URL if '?s=cl' not in URL else URL[:-5]).split('/')[-1]
     file_names = []
-    vid_links = []
 
 def new_soup(url):  # function to create new html objects from bs
     return BeautifulSoup(requests.get(url).text, 'html.parser')
 
 def grab_attr(html, class_name, attr_name): # returns the attribute specified from the class name specified
     soup = new_soup(html)
-    return soup.find("div", {"class":class_name})[attr_name]
+    div_found = soup.find("div", {"class":class_name})
+    if div_found!=None:
+        return div_found[attr_name]
 
 def scroll_to_bottom(): # Scrolls to the bottom of the page to load in all javascript elements
     lenOfPage = driver.execute_script("window.scrollTo(0, document.body.scrollHeight);var lenOfPage=document.body.scrollHeight;return lenOfPage;")
@@ -83,36 +83,34 @@ def check_exists_by_class_attribute(class_name, attribute):
         return False
     return exists is not None
 
-def grab_video_links(): # adds video links to the vid_links list
-    link_elems = driver.find_elements_by_css_selector("a[class*='grid__link']")
+def grab_video_links(): # adds video links to the file_names list (formerly added to Deprecated: vid_links) 
+    vid_class = '_2bHN' # was formerly grid__link
+    link_elems = driver.find_elements_by_css_selector("video[class*="+vid_class+"]")# video tag was formerly an 'a' tag
     for vid_url in link_elems:
-        href = vid_url.get_attribute("href")
-        print(href)
-        if '/video/' in href or '/gif/' in href:
-            if 'ifunny.co' in href:
-                vid_links.append(href)
+        src = vid_url.get_attribute("data-src")# Attribute of url now stored in src rather than href
+        if (src==None): # If unable to locate link, look in a child element
+            src = vid_url.find_element_by_xpath("//source[@type='video/mp4']").get_attribute("src")
+        print(src) # Display the video link found
+        if '/video/' in src or '/videos/' in src or '/gif/' in src:
+            if 'ifunny.co' in src:
+                file_names.append(src)#vid_links deprecated, now directly added to file_names
             else:
-                vid_links.append('ifunny.co'+href)# file_names.append(grab_data_source(href, 'media_fun'))
+                file_names.append('ifunny.co'+src)# file_names.append(grab_data_source(href, 'media_fun'))
 
 def load_images(): # appends cropped images to file_names
-    img_elems = driver.find_elements_by_class_name("grid__image")
+    img_class = '_17ZL' # was formerly grid__image
+    avatar_class = '_30tR' # was formerly v-avatar__image
+    banner_class = '_3oof' # was formerly profile__cover-image
+    img_elems = driver.find_elements_by_css_selector("img[class*="+img_class+"]")
     for img_url in img_elems:
-        if '1x1.gif' not in img_url.get_attribute("src").split("images/",1)[1]:
-            file_names.append('https://imageproxy.ifunny.co/crop:x-20/images/'+(img_url.get_attribute("src")).split("images/",1)[1]) # Removes watermark
-    if check_exists_by_class_name("v-avatar__image") and check_exists_by_class_attribute("v-avatar__image","src"):
-        file_names.append("https://imageproxy.ifunny.co/crop:square/user_photos/"+driver.find_element_by_class_name("v-avatar__image").get_attribute("src").split("/")[-1])
-    if check_exists_by_class_name("profile__cover-image") and check_exists_by_class_attribute("profile__cover-image","src"):
-        file_names.append(driver.find_element_by_class_name("profile__cover-image").get_attribute("src"))
-
-def append_video_links(): # grabs actual video links from their link reference
-    count = 0
-    for link in vid_links:
-        file_names.append(grab_attr(link, 'media_fun', 'data-source')) # Uses bs4
-        count+=1
-        print('Appending video link '+str(count)+' out of '+str(len(vid_links)))
-        # driver.get(link) # uncomment these to instead use selenium
-        # time.sleep(pause)
-        # file_names.append(driver.find_element_by_css_selector("div[class*='media_fun']").get_attribute("data-source"))
+        if 'images/' in img_url.get_attribute("src"):
+            img_name = img_url.get_attribute("src").split("images/",1)[1]
+            if '1x1' not in img_name or '.gif' not in img_name:
+                file_names.append('https://imageproxy.ifunny.co/crop:x-20/images/'+(img_name)) # Removes watermark
+    if check_exists_by_class_name(avatar_class) and check_exists_by_class_attribute(avatar_class,'src'):
+        file_names.append('https://imageproxy.ifunny.co/crop:square/user_photos/'+driver.find_element_by_class_name(avatar_class).get_attribute('src').split('/')[-1])
+    if check_exists_by_class_name(banner_class) and check_exists_by_class_attribute(banner_class,'src'):
+        file_names.append(driver.find_element_by_class_name(banner_class).get_attribute('src'))
 
 def print_files(): # Used in testing, if used would print out each file name
     for name in file_names:
@@ -120,11 +118,10 @@ def print_files(): # Used in testing, if used would print out each file name
 
 def grab_link_for_user(user): # Executes functions to collect download links
     set_variables(user)
-    driver.get(user)
+    driver.get(URL)
     scroll_to_bottom()
     grab_video_links()
     load_images()
-    append_video_links()
     create_txt()
 
 def create_txt(): # creates the txt file used for downloading files
@@ -176,8 +173,10 @@ else:
 
 if mode==0 or mode==1: # Grab links
     for user in list_of_users:
-        grab_link_for_user(user)
+        if (user!=None) and ('.' in user):
+            grab_link_for_user(user)
     driver.close()
 
 if mode==0 or mode==2: # Download Files
+    print('Downloading Files')
     download_files(list_of_users)
